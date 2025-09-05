@@ -48,12 +48,6 @@ curl -s http://localhost:8080/auth/login \
 
 Extract token for subsequent requests:
 ```bash
-# Option 1: Single command (recommended for scripts)
-TOKEN=$(curl -s http://localhost:8080/auth/login \
-  -H 'Content-Type: application/json' \
-  -d '{"email":"test@example.com","password":"password"}' | jq -r .token)
-
-# Option 2: For interactive sessions, save to file
 curl -s http://localhost:8080/auth/login \
   -H 'Content-Type: application/json' \
   -d '{"email":"test@example.com","password":"password"}' | jq -r .token > .token
@@ -64,7 +58,7 @@ TOKEN=$(cat .token)
 
 Create task (requires Idempotency-Key):
 ```bash
-# Single command approach (works in all shells)
+# Single command approach 
 TOKEN=$(curl -s http://localhost:8080/auth/login \
   -H 'Content-Type: application/json' \
   -d '{"email":"test@example.com","password":"password"}' | jq -r .token) && \
@@ -77,13 +71,58 @@ curl -s http://localhost:8080/tasks \
 
 List tasks (paginated, cached 30s):
 ```bash
-# Single command approach (works in all shells)
+# Single command approach 
 TOKEN=$(curl -s http://localhost:8080/auth/login \
   -H 'Content-Type: application/json' \
   -d '{"email":"test@example.com","password":"password"}' | jq -r .token) && \
 curl -s "http://localhost:8080/tasks?status=pending&page=1&limit=10" \
   -H "Authorization: Bearer $TOKEN" | jq .
 ```
+#### Error Handling & Security
+
+Test invalid login (shows error envelope):
+```bash
+curl -i http://localhost:8080/auth/login \
+  -H 'Content-Type: application/json' \
+  -d '{"email":"wrong@example.com","password":"wrong"}'
+```
+
+Test unauthorized access:
+```bash
+# No token
+curl -i http://localhost:8080/tasks
+
+# Invalid token
+curl -i http://localhost:8080/tasks -H "Authorization: Bearer invalid"
+```
+
+#### Idempotency Testing
+
+Create task and test replay behavior:
+```bash
+# Create with idempotency key
+IDEM_KEY=$(uuidgen)
+curl -i http://localhost:8080/tasks \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Idempotency-Key: $IDEM_KEY" \
+  -H 'Content-Type: application/json' \
+  -d '{"title":"Demo Task","status":"pending"}'
+
+# Replay same request (expect identical response)
+curl -i http://localhost:8080/tasks \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Idempotency-Key: $IDEM_KEY" \
+  -H 'Content-Type: application/json' \
+  -d '{"title":"Demo Task","status":"pending"}'
+
+# Replay with different body (expect 409 conflict)
+curl -i http://localhost:8080/tasks \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Idempotency-Key: $IDEM_KEY" \
+  -H 'Content-Type: application/json' \
+  -d '{"title":"Changed Title","status":"pending"}'
+```
+
 
 ## Key Features
 
