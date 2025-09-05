@@ -43,7 +43,7 @@ Login with seeded user:
 ```bash
 curl -s http://localhost:8080/auth/login \
   -H 'Content-Type: application/json' \
-  -d '{"email":"test@example.com","password":"password"}'
+  -d '{"email":"test@example.com","password":"password"}' | jq .
 ```
 
 Extract token for subsequent requests:
@@ -72,7 +72,7 @@ curl -s http://localhost:8080/tasks \
   -H "Authorization: Bearer $TOKEN" \
   -H "Idempotency-Key: $(uuidgen)" \
   -H 'Content-Type: application/json' \
-  -d '{"title":"Buy milk","status":"pending"}'
+  -d '{"title":"Buy milk","status":"pending"}' | jq .
 ```
 
 List tasks (paginated, cached 30s):
@@ -82,7 +82,7 @@ TOKEN=$(curl -s http://localhost:8080/auth/login \
   -H 'Content-Type: application/json' \
   -d '{"email":"test@example.com","password":"password"}' | jq -r .token) && \
 curl -s "http://localhost:8080/tasks?status=pending&page=1&limit=10" \
-  -H "Authorization: Bearer $TOKEN"
+  -H "Authorization: Bearer $TOKEN" | jq .
 ```
 
 ## Key Features
